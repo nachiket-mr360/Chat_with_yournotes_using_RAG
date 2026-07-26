@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>chat with your notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12131a;
+    --bg-deep:#0c0d12;
+    --panel:#191b24;
+    --panel-2:#1e2029;
+    --border:#2b2e3b;
+    --border-soft:#242631;
+    --ink:#e9e6db;
+    --ink-dim:#9b9caa;
+    --ink-faint:#5f6170;
+    --gold:#d9a84e;
+    --gold-bright:#f0c374;
+    --gold-dim:#8a6a35;
+    --teal:#4fb3a4;
+    --teal-dim:#2f6d64;
+    --parchment:#f4efe0;
+    --parchment-ink:#2b2620;
+    --parchment-edge:#e3dac2;
+    --danger:#c0645a;
+    --radius:14px;
+    --shadow-lift: 0 12px 32px -12px rgba(0,0,0,0.55);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    display:flex;
+    height:100vh;
+    overflow:hidden;
+    background:
+      radial-gradient(1100px 620px at 12% -10%, #1c2130 0%, transparent 60%),
+      radial-gradient(900px 700px at 110% 110%, #1a1f1c 0%, transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  ::selection{ background:var(--gold-dim); color:#fff; }
+
+  /* scrollbars */
+  *::-webkit-scrollbar{ width:10px; }
+  *::-webkit-scrollbar-track{ background:transparent; }
+  *::-webkit-scrollbar-thumb{ background:var(--border); border-radius:8px; border:2px solid transparent; background-clip:padding-box; }
+  *::-webkit-scrollbar-thumb:hover{ background:var(--gold-dim); background-clip:padding-box; }
+
+  /* ---------- SIDEBAR ---------- */
+  aside{
+    width:280px;
+    flex-shrink:0;
+    background:linear-gradient(180deg, var(--panel) 0%, var(--bg-deep) 100%);
+    border-right:1px solid var(--border);
+    padding:28px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:26px;
+    position:relative;
+    z-index:2;
+  }
+  aside::after{
+    content:"";
+    position:absolute; inset:0 0 0 auto;
+    width:1px; height:100%;
+    background:linear-gradient(180deg, transparent, var(--gold-dim) 40%, transparent 90%);
+    opacity:.35;
+  }
+
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .nib{ width:30px; height:30px; flex-shrink:0; }
+  .nib path{
+    fill:none;
+    stroke:var(--gold-bright);
+    stroke-width:1.6;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    stroke-dasharray:140;
+    stroke-dashoffset:140;
+    animation:draw-nib 1.7s ease forwards .2s;
+  }
+  @keyframes draw-nib{ to{ stroke-dashoffset:0; } }
+
+  h1.brand-title{
+    margin:0;
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:19px;
+    letter-spacing:.2px;
+    line-height:1.15;
+    color:var(--ink);
+  }
+  .brand-sub{
+    margin:2px 0 0;
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+  }
+
+  /* status pill */
+  #statusBox{
+    display:inline-flex;
+    align-items:center;
+    gap:9px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:.03em;
+    color:var(--ink-dim);
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    padding:8px 13px;
+    border-radius:100px;
+    width:fit-content;
+    transition:border-color .3s ease, background .3s ease;
+  }
+  #statusBox .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--ink-faint);
+    box-shadow:0 0 0 0 rgba(0,0,0,0);
+    transition:background .3s ease;
+    flex-shrink:0;
+  }
+  #statusBox.state-checking .dot{ background:var(--ink-faint); animation:blink 1.1s ease-in-out infinite; }
+  #statusBox.state-nokey .dot{ background:var(--danger); }
+  #statusBox.state-waiting .dot{ background:var(--gold-dim); }
+  #statusBox.state-ready{ border-color:var(--gold-dim); background:rgba(217,168,78,0.07); }
+  #statusBox.state-ready .dot{ background:var(--gold-bright); box-shadow:0 0 0 3px rgba(217,168,78,0.18); animation:pulse-ring 2.2s ease-in-out infinite; }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+  @keyframes pulse-ring{
+    0%{ box-shadow:0 0 0 0 rgba(217,168,78,0.35); }
+    70%{ box-shadow:0 0 0 7px rgba(217,168,78,0); }
+    100%{ box-shadow:0 0 0 0 rgba(217,168,78,0); }
+  }
+
+  .section-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin:0 0 10px;
+  }
+
+  /* document dropzone */
+  .doc-block{ display:flex; flex-direction:column; gap:10px; }
+  .dropzone{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:22px 14px;
+    border:1.5px dashed var(--border);
+    border-radius:var(--radius);
+    background:var(--panel-2);
+    cursor:pointer;
+    transition:border-color .25s ease, background .25s ease, transform .15s ease;
+    text-align:center;
+  }
+  .dropzone:hover{ border-color:var(--gold-dim); background:#22242f; }
+  .dropzone:active{ transform:scale(.98); }
+  .dropzone svg{ width:22px; height:22px; stroke:var(--gold); opacity:.9; transition:transform .3s ease; }
+  .dropzone:hover svg{ transform:translateY(-2px); }
+  .dropzone-label{ font-size:12.5px; color:var(--ink-dim); font-weight:500; }
+  .dropzone-hint{ font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--ink-faint); letter-spacing:.04em; }
+  #fileInput{
+    position:absolute; inset:0; width:100%; height:100%;
+    opacity:0; cursor:pointer;
+  }
+
+  #currentFile{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    color:var(--ink-dim);
+    background:var(--panel-2);
+    border:1px solid var(--border-soft);
+    padding:9px 11px;
+    border-radius:9px;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    animation:card-in .35s ease;
+  }
+  #currentFile::before{
+    content:"◆";
+    color:var(--gold);
+    font-size:9px;
+    flex-shrink:0;
+  }
+  #currentFile.uploading{ color:var(--gold-bright); }
+  #currentFile.uploading::before{ animation:blink .8s ease-in-out infinite; }
+
+  .spacer{ flex:1; }
+
+  button#clearBtn{
+    all:unset;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    font-family:'Inter', sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink-dim);
+    background:transparent;
+    border:1px solid var(--border);
+    padding:11px 14px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:all .2s ease;
+  }
+  button#clearBtn:hover{
+    color:var(--danger);
+    border-color:var(--danger);
+    background:rgba(192,100,90,0.08);
+  }
+  button#clearBtn:active{ transform:scale(.97); }
+
+  /* ---------- MAIN ---------- */
+  main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    position:relative;
+  }
+
+  .chat{
+    flex:1;
+    overflow-y:auto;
+    padding:36px 8% 20px;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+  /* the spine */
+  .chat::before{
+    content:"";
+    position:absolute;
+    left:calc(8% + 18px);
+    top:36px;
+    bottom:20px;
+    width:1px;
+    background:linear-gradient(180deg, transparent, var(--border) 8%, var(--border) 92%, transparent);
+    pointer-events:none;
+  }
+  @media (max-width:760px){
+    .chat{ padding:28px 5% 16px; }
+    .chat::before{ display:none; }
+  }
+
+  #emptyState{
+    margin:auto;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:14px;
+    color:var(--ink-faint);
+    text-align:center;
+    max-width:340px;
+    animation:card-in .5s ease;
+  }
+  #emptyState svg{ width:40px; height:40px; stroke:var(--ink-faint); opacity:.6; animation:float 3.4s ease-in-out infinite; }
+  #emptyState .es-title{ font-family:'Fraunces', serif; font-size:17px; color:var(--ink-dim); font-style:italic; }
+  #emptyState .es-sub{ font-size:12.5px; line-height:1.6; color:var(--ink-faint); }
+  @keyframes float{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-6px);} }
+
+  .msg{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    max-width:640px;
+    position:relative;
+    padding-left:38px;
+    animation:card-in .38s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes card-in{
+    from{ opacity:0; transform:translateY(8px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .msg::before{
+    content:"";
+    position:absolute;
+    left:14px; top:6px;
+    width:9px; height:9px;
+    border-radius:50%;
+    background:var(--bg);
+    border:2px solid var(--border);
+  }
+  .msg.user{ align-self:flex-end; align-items:flex-end; padding-left:0; padding-right:38px; }
+  .msg.user::before{ left:auto; right:14px; border-color:var(--teal-dim); }
+  .msg.bot::before{ border-color:var(--gold-dim); }
+
+  .msg > div:first-child{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    padding:0 4px;
+  }
+
+  .msg .content{
+    font-size:14.5px;
+    line-height:1.65;
+    padding:14px 17px;
+    border-radius:var(--radius);
+    word-wrap:break-word;
+  }
+  .msg.bot .content{
+    background:var(--parchment);
+    color:var(--parchment-ink);
+    border:1px solid var(--parchment-edge);
+    border-top-left-radius:4px;
+    box-shadow:var(--shadow-lift);
+    background-image:repeating-linear-gradient(180deg, transparent, transparent 27px, rgba(43,38,32,0.045) 28px);
+    font-family:'Inter', sans-serif;
+  }
+  .msg.user .content{
+    background:linear-gradient(160deg, var(--teal) 0%, var(--teal-dim) 100%);
+    color:#0d1a18;
+    border-top-right-radius:4px;
+    box-shadow:var(--shadow-lift);
+    font-weight:500;
+  }
+  .msg .content code{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12.5px;
+    background:rgba(0,0,0,0.08);
+    padding:1px 5px;
+    border-radius:4px;
+  }
+  .msg.user .content code{ background:rgba(0,0,0,0.18); }
+  .msg .content pre{
+    background:#0f1016;
+    color:#e8e6de;
+    padding:12px 14px;
+    border-radius:9px;
+    overflow-x:auto;
+    margin:8px 0;
+    border:1px solid var(--border);
+  }
+  .msg .content pre code{ background:none; padding:0; }
+  .msg .content ul{ margin:6px 0; padding-left:20px; }
+  .msg .content li{ margin:3px 0; }
+  .msg .content b{ font-weight:700; }
+
+  /* typing indicator (shown until first token streams in) */
+  .typing{ display:inline-flex; gap:4px; align-items:center; padding:2px 2px; }
+  .typing span{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--gold-dim);
+    animation:typing-bounce 1.1s ease-in-out infinite;
+  }
+  .typing span:nth-child(2){ animation-delay:.15s; }
+  .typing span:nth-child(3){ animation-delay:.3s; }
+  @keyframes typing-bounce{
+    0%,60%,100%{ transform:translateY(0); opacity:.5; }
+    30%{ transform:translateY(-4px); opacity:1; }
+  }
+
+  /* ---------- COMPOSER ---------- */
+  .composer{
+    display:flex;
+    gap:10px;
+    padding:18px 8%;
+    border-top:1px solid var(--border);
+    background:linear-gradient(180deg, transparent, rgba(0,0,0,0.15));
+  }
+  @media (max-width:760px){ .composer{ padding:16px 5%; } }
+
+  #question{
+    flex:1;
+    background:var(--panel-2);
+    color:var(--ink);
+    border:1px solid var(--border);
+    border-radius:100px;
+    padding:13px 20px;
+    font-size:14px;
+    font-family:'Inter', sans-serif;
+    outline:none;
+    transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  #question::placeholder{ color:var(--ink-faint); }
+  #question:focus{
+    border-color:var(--gold);
+    box-shadow:0 0 0 4px rgba(217,168,78,0.14);
+    background:#20222c;
+  }
+  #question:disabled{ opacity:.5; cursor:not-allowed; }
+
+  button#sendBtn{
+    all:unset;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:46px; height:46px;
+    flex-shrink:0;
+    border-radius:50%;
+    background:linear-gradient(160deg, var(--gold-bright), var(--gold-dim));
+    color:#221a08;
+    cursor:pointer;
+    box-shadow:0 6px 18px -6px rgba(217,168,78,0.55);
+    transition:transform .18s cubic-bezier(.3,1.6,.5,1), box-shadow .2s ease, filter .2s ease;
+  }
+  button#sendBtn svg{ width:18px; height:18px; transform:translateX(-1px); }
+  button#sendBtn:hover:not(:disabled){ transform:translateY(-2px) scale(1.04); box-shadow:0 10px 24px -6px rgba(217,168,78,0.65); }
+  button#sendBtn:active:not(:disabled){ transform:scale(.92) rotate(-8deg); }
+  button#sendBtn:disabled{
+    background:var(--panel-2);
+    color:var(--ink-faint);
+    box-shadow:none;
+    cursor:not-allowed;
+    filter:grayscale(.4);
+  }
+  button#sendBtn.sending svg{ animation:launch .5s ease; }
+  @keyframes launch{
+    0%{ transform:translate(-1px,0) rotate(0deg); }
+    50%{ transform:translate(10px,-10px) rotate(20deg); opacity:.2; }
+    51%{ transform:translate(-14px,10px) rotate(-15deg); opacity:0; }
+    100%{ transform:translate(-1px,0) rotate(0deg); opacity:1; }
+  }
+
+  a, button{ font:inherit; }
+  :focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+  }
+</style>
+</head>
+<body>
+    <aside>
+        <div class="brand">
+            <svg class="nib" viewBox="0 0 32 32" fill="none">
+                <path d="M16 3 L27 14 L16 29 L9 22 Z" />
+                <path d="M16 3 L9 22 M16 16 L20 12" />
+            </svg>
+            <div>
+                <h1 class="brand-title">chat with your notes</h1>
+                <p class="brand-sub">local document Q&amp;A</p>
+            </div>
+        </div>
+
+        <div id="statusBox" class="state-checking"><span class="dot"></span><span id="statusText">checking…</span></div>
+
+        <div class="doc-block">
+            <p class="section-label">Document</p>
+            <label class="dropzone" for="fileInput">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+                <span class="dropzone-label">Drop a file or click to upload</span>
+                <span class="dropzone-hint">PDF · TXT · MD</span>
+                <input type="file" id="fileInput" accept=".pdf,.txt,.md"/>
+            </label>
+            <div id="currentFile">no doc uploaded</div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <button id="clearBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>
+            clear chat
+        </button>
+    </aside>
+
+    <main>
+        <div class="chat" id="chat">
+            <div id="emptyState">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                <div class="es-title">Nothing on the desk yet</div>
+                <div class="es-sub">Upload a document in the sidebar, then ask it anything — quotes, summaries, specific numbers.</div>
+            </div>
+        </div>
+
+        <div class="composer">
+            <input type="text" id="question" placeholder="Ask your notes something…" disabled/>
+            <button id="sendBtn" type="button" disabled aria-label="Send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+            </button>
+        </div>
+    </main>
+
+    <script>
+        const chatEl = document.getElementById('chat');
+        const questionEl = document.getElementById('question');
+        const sendBtnEl = document.getElementById('sendBtn');
+        const statusBoxEl = document.getElementById('statusBox');
+        const statusTextEl = document.getElementById('statusText');
+        let indexReady = false;
+
+        async function refreshStatus(){
+
+            const d = await fetch('/api/status').then(r => r.json());
+            indexReady = d.index_ready;
+
+            let state = 'checking';
+            let label = 'checking..';
+            if (!d.groq_key_set){
+                state = 'nokey';
+                label = 'no groq api set';
+            } else if (!d.index_ready){
+                state = 'waiting';
+                label = 'upload doc to start';
+            } else {
+                state = 'ready';
+                label = 'index ready';
+            }
+            statusBoxEl.className = 'state-' + state;
+            statusTextEl.textContent = label;
+
+            const cf = document.getElementById('currentFile');
+            cf.classList.remove('uploading');
+            cf.textContent = d.curr_file ? `${d.curr_file}` : 'no doc uploaded';
+
+            questionEl.disabled = !d.index_ready;
+            document.getElementById('sendBtn').disabled = !d.index_ready;
+
+        }
+        document.getElementById('fileInput').addEventListener('change', async (e)=> {
+            const file = e.target.files[0];
+            if (!file) return;
+            const cf = document.getElementById('currentFile');
+            cf.classList.add('uploading');
+            cf.textContent = 'uploading and indexing';
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/api/upload', {method: 'POST',body: fd });
+            if (!res.ok){
+                const err = await res.json().catch(()=> ({}));
+                alert(err.detail);
+            }
+            e.target.value = '';
+            await refreshStatus();
+
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', ()=> {
+            chatEl.innerHTML = '';
+            chatEl.appendChild(document.getElementById('emptyState'));
+        });
+
+
+
+
+        function escapeHtml(s){
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function renderMarkdown(text){
+            let html = escapeHtml(text);
+            const blocks = [];
+            html = html.replace(/```([\s\S]*?)```/g, (_, code) => {
+                blocks.push(`<pre><code>${code.trim()}</code></pre>`);
+                return `\x00BLOCK${blocks.length - 1}\x00`;
+            });
+
+
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+            html = html.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+            const lines = html.split('\n');
+            const out = [];
+            let inList = false;
+            for (const l of lines){
+                const m = l.match(/^\s*[-*]\s+(.*)/);
+                if (m) {
+                    if (!inList) {out.push('<ul>'); inList=true}
+                        out.push(`<li>${m[1]}</li>`);
+                } else {
+                    if (inList) {
+                        out.push('</ul>'); inList = false;
+                    }
+                    out.push(l)
+                }
+
+            }
+            if (inList) out.push('</ul>');
+
+            html = out.join('\n');
+            return html.replace(/\x00BLOCK(\d+)\x00/g, (_, i) => blocks[i]);
+        }
+
+
+
+
+        function addMsg(role, txt){
+            const es = document.getElementById('emptyState');
+            if (es) es.remove();
+
+            const div = document.createElement('div');
+            div.className = 'msg ' + role;
+            div.innerHTML = `<div>${role === 'user' ? 'you' : 'bot'}</div>
+            <div class="content"></div>`;
+            chatEl.appendChild(div);
+            const content = div.querySelector('.content');
+            if (txt) {
+                content.innerHTML = renderMarkdown(txt);
+            } else if (role === 'bot') {
+                content.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+            }
+            chatEl.scrollTop = chatEl.scrollHeight;
+            return content;
+        }
+
+
+        async function sendQuestion(){
+            const input = document.getElementById('question');
+            const question = input.value.trim();
+            if (!question || !indexReady) return;
+            input.value = ''
+            sendBtnEl.classList.add('sending');
+            setTimeout(()=> sendBtnEl.classList.remove('sending'), 500);
+            addMsg('user', question);
+            const botContent = addMsg('bot', '');
+            let firstChunk = true;
+
+
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({question}),
+            });
+
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = '';
+            let fullText = '';
+            while (true){
+                const { done, value} = await reader.read();
+                if(done) break;
+                buf += decoder.decode(value, {stream: true});
+                const events = buf.split('\n\n');
+                buf = events.pop();
+                for (const e of events){
+                    let eventType = 'message', data = '';
+                    for ( const l of e.split('\n')){
+                        if (l.startsWith('event: ')) eventType = l.slice(7);
+                        if (l.startsWith('data: ')) data = l.slice(6);
+                    }
+                    if (eventType === 'sources'){
+                        console.log('sources: ', JSON.parse(data));
+                    } else if (eventType !== 'done' && data){
+                        if (firstChunk) { botContent.innerHTML = ''; firstChunk = false; }
+                        fullText += JSON.parse(data);
+                        botContent.innerHTML = renderMarkdown(fullText)
+                        chatEl.scrollTop = chatEl.scrollHeight;
+                    }
+                }
+            }
+        }
+        document.getElementById('sendBtn').addEventListener('click', sendQuestion);
+        document.getElementById('question').addEventListener('keydown', e => {
+            if (e.key === 'Enter') sendQuestion();
+        });
+
+        refreshStatus();
+    </script>
+</body>
+</html>
