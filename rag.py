@@ -40,8 +40,7 @@ QUESTION: {question}
 ANSWER:
 """)
 
-CHROMA_DIR = os.environ.get("CHROMA_DIR", "chroma_db")
-
+CHROMA_DIR = os.environ.get("CHROMA_DIR", "/tmp/chroma_db")
 def get_embeddings(): 
     if not hasattr(get_embeddings,"_model"):
         get_embeddings._model = FastEmbedEmbeddings(model="BAAI/bge-small-en-v1.5", cache_dir="EMB_CACHE")
@@ -99,4 +98,5 @@ def answer(store:Chroma, question:str, k:int=4, model:str | None=None) -> str: #
         "question": question
     })
     return docs, token_gen
+
 
