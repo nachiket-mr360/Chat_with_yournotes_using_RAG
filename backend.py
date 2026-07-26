@@ -73,7 +73,8 @@ def chat(req: ChatRequest):
         sources = [
             {"source": Path(d.metadata.get("source", "?")).name, "preview": d.page_content[:300]} for d in docs
         ]
-        yield f"event: sources\ndata: {json.dumps(sources)}\n\n"        for t in token_gen:
+        yield f"event: sources\ndata: {json.dumps(sources)}\n\n"  
+        for t in token_gen:
             yield f"data: {json.dumps(t)}\n\n"
         yield "event: done\ndata: {}\n\n"
     return StreamingResponse(event_stream(), media_type="text/event-stream", headers={
