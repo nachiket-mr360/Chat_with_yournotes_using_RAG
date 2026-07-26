@@ -67,7 +67,7 @@ def build_index(doc: str="docs", batch_size: int=32) -> Chroma: #here indexing, 
         loader = PyPDFLoader(str(p) if p.suffix.lower() == ".pdf" else TextLoader(str(p), encoding="utf-8")) #extract the text contains
         all_chunks.extend(splitter.split_documents(loader.load())) #the text comes here and split_docuement breaks it, and store it in all_chunks
     store = Chroma.from_documents(all_chunks, embedding=get_embeddings(),  persist_directory=CHROMA_DIR) #it store in the store
-    return store        
+    return store 
 
 def load_index() -> Chroma: #using indexloading the data into llm(model)
     if not Path(CHROMA_DIR).exists():
