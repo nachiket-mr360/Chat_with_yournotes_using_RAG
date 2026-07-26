@@ -503,51 +503,116 @@
         const statusTextEl = document.getElementById('statusText');
         let indexReady = false;
 
-        async function refreshStatus(){
+        async function refreshStatus() {
 
-            const d = await fetch('/api/status').then(r => r.json());
-            indexReady = d.index_ready;
+    try {
 
-            let state = 'checking';
-            let label = 'checking..';
-            if (!d.groq_key_set){
-                state = 'nokey';
-                label = 'no groq api set';
-            } else if (!d.index_ready){
-                state = 'waiting';
-                label = 'upload doc to start';
-            } else {
-                state = 'ready';
-                label = 'index ready';
-            }
-            statusBoxEl.className = 'state-' + state;
-            statusTextEl.textContent = label;
+        const res = await fetch('/api/status');
 
-            const cf = document.getElementById('currentFile');
-            cf.classList.remove('uploading');
-            cf.textContent = d.curr_file ? `${d.curr_file}` : 'no doc uploaded';
+        if (!res.ok)
+            throw new Error("Server unavailable");
 
-            questionEl.disabled = !d.index_ready;
-            document.getElementById('sendBtn').disabled = !d.index_ready;
+        const d = await res.json();
 
+        indexReady = d.index_ready;
+
+        let state = "checking";
+        let label = "Checking...";
+
+        if (!d.groq_key_set) {
+            state = "nokey";
+            label = "Groq API Key Missing";
         }
-        document.getElementById('fileInput').addEventListener('change', async (e)=> {
-            const file = e.target.files[0];
-            if (!file) return;
-            const cf = document.getElementById('currentFile');
-            cf.classList.add('uploading');
-            cf.textContent = 'uploading and indexing';
-            const fd = new FormData();
-            fd.append('file', file);
-            const res = await fetch('/api/upload', {method: 'POST',body: fd });
-            if (!res.ok){
-                const err = await res.json().catch(()=> ({}));
-                alert(err.detail);
-            }
-            e.target.value = '';
-            await refreshStatus();
+        else if (!d.index_ready) {
+            state = "waiting";
+            label = "Upload a document";
+        }
+        else {
+            state = "ready";
+            label = "Ready to Chat";
+        }
 
+        statusBoxEl.className = "state-" + state;
+        statusTextEl.textContent = label;
+
+        const cf = document.getElementById("currentFile");
+
+        if (d.current_file) {
+            cf.classList.remove("uploading");
+            cf.textContent = "📄 " + d.current_file;
+        }
+
+        questionEl.disabled = !d.index_ready;
+        sendBtnEl.disabled = !d.index_ready;
+
+    }
+    catch (err) {
+
+        console.error(err);
+
+        statusBoxEl.className = "state-nokey";
+        statusTextEl.textContent = "Backend Offline";
+
+    }
+
+}
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const cf = document.getElementById('currentFile');
+
+    cf.classList.add('uploading');
+    cf.textContent = `📤 Uploading ${file.name}...`;
+
+    questionEl.disabled = true;
+    sendBtnEl.disabled = true;
+
+    const fd = new FormData();
+    fd.append('file', file);
+
+    try {
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: fd
         });
+
+        if (!res.ok) {
+            let message = "Upload failed";
+
+            try {
+                const err = await res.json();
+                message = err.detail || message;
+            } catch {
+                message = await res.text() || message;
+            }
+
+            throw new Error(message);
+        }
+
+        cf.textContent = "📚 Indexing document...";
+
+        await refreshStatus();
+
+        cf.classList.remove('uploading');
+        cf.textContent = `✅ ${file.name} uploaded successfully`;
+
+    } catch (err) {
+
+        console.error(err);
+
+        cf.classList.remove('uploading');
+        cf.textContent = `❌ ${err.message}`;
+
+    } finally {
+
+        e.target.value = '';
+
+        questionEl.disabled = !indexReady;
+        sendBtnEl.disabled = !indexReady;
+    }
+});
+       
 
         document.getElementById('clearBtn').addEventListener('click', ()=> {
             chatEl.innerHTML = '';

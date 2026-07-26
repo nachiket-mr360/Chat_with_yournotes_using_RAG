@@ -9,11 +9,11 @@ from fastapi.staticfiles import StaticFiles
 import rag
 
 
-DOCS_DIR = os.environ.get("DOCS_DIR", "docs")
+DOCS_DIR = os.environ.get("DOCS_DIR", "/tmp/docs")
 app = FastAPI(title="chat with your notes")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 _store = None
-_curr_file = None
+_current_file = None
 
 
 @app.on_event("startup")
@@ -36,12 +36,12 @@ def status():
     return {
         "index_ready": get_store() is not None,
         "groq_key_set": bool(os.environ.get("GROQ_API_KEY")),
-        "current_file": _curr_file,
+        "current_file": _current_file,
     }
 
 @app.post("/api/upload")
 async def upload(file: UploadFile = File(...)):
-    global _store, _curr_file
+    global _store, _current_file
     if Path(file.filename).suffix.lower() not in (".pdf", ".txt", ".md"):
         raise HTTPException(400, "wrong file type")
     docs_dir = Path(DOCS_DIR)
@@ -55,7 +55,7 @@ async def upload(file: UploadFile = File(...)):
         _store = rag.build_index(DOCS_DIR)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    _curr_file = file.filename
+    _current_file = file.filename
     return {"ok": True, "filename": file.filename}
 
 class ChatRequest(BaseModel):
