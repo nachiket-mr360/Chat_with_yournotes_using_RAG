@@ -622,42 +622,9 @@
             return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         }
 
-        function renderMarkdown(text){
-            let html = escapeHtml(text);
-            const blocks = [];
-            html = html.replace(/```([\s\S]*?)```/g, (_, code) => {
-                blocks.push(`<pre><code>${code.trim()}</code></pre>`);
-                return `\x00BLOCK${blocks.length - 1}\x00`;
-            });
-
-
-            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-            html = html.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
-            const lines = html.split('\n');
-            const out = [];
-            let inList = false;
-            for (const l of lines){
-                const m = l.match(/^\s*[-*]\s+(.*)/);
-                if (m) {
-                    if (!inList) {out.push('<ul>'); inList=true}
-                        out.push(`<li>${m[1]}</li>`);
-                } else {
-                    if (inList) {
-                        out.push('</ul>'); inList = false;
-                    }
-                    out.push(l)
-                }
-
-            }
-            if (inList) out.push('</ul>');
-
-            html = out.join('\n');
-            return html.replace(/\x00BLOCK(\d+)\x00/g, (_, i) => blocks[i]);
+        function renderMarkdown(text) {
+            return DOMPurify.sanitize(marked.parse(text));
         }
-
-
-
-
         function addMsg(role, txt){
             const es = document.getElementById('emptyState');
             if (es) es.remove();
@@ -731,5 +698,8 @@
 
         refreshStatus();
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 </body>
 </html>
