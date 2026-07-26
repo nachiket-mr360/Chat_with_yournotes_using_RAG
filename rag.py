@@ -24,6 +24,9 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 PROMPT = ChatPromptTemplate.from_template("""
@@ -64,15 +67,15 @@ def build_index(doc: str="docs", batch_size: int=32) -> Chroma: #here indexing, 
     all_chunks = []
     
     for p in paths:
-        loader = PyPDFLoader(str(p) if p.suffix.lower() == ".pdf" else TextLoader(str(p), encoding="utf-8")) #extract the text contains
+        loader = (PyPDFLoader(str(p)) if p.suffix.lower() == ".pdf" else TextLoader(str(p), encoding="utf-8")) #extract the text contains
         all_chunks.extend(splitter.split_documents(loader.load())) #the text comes here and split_docuement breaks it, and store it in all_chunks
-    store = Chroma.from_documents(all_chunks, embedding=get_embeddings(),  persist_directory=CHROMA_DIR) #it store in the store
+    store = Chroma.from_documents(documents = all_chunks, embedding=get_embeddings(),  persist_directory=CHROMA_DIR) #it store in the store
     return store 
 
 def load_index() -> Chroma: #using indexloading the data into llm(model)
     if not Path(CHROMA_DIR).exists():
         raise ValueError(f'chroma directory {CHROMA_DIR} doesnot exist, pleasebuild the inded first')
-    return Chroma(persist_directory=CHROMA_DIR, embedding=get_embeddings())
+    return Chroma(persist_directory=CHROMA_DIR, embedding_function=get_embeddings())
 
 def format_docs(docs) ->str: #it gives the chunk he took from the files
     parts = []
@@ -91,6 +94,9 @@ def answer(store:Chroma, question:str, k:int=4, model:str | None=None) -> str: #
     #RAG --> G (Generate-->answer)
     chain = PROMPT | llm | StrOutputParser()
     
-    token_gen = chain.stream({"Context":context, "Question":{question}})
+    token_gen = chain.stream({
+        "context": context,
+        "question": question
+    })
     return docs, token_gen
 
