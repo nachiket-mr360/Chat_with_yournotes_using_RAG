@@ -42,7 +42,7 @@ def status():
 @app.post("/api/upload")
 async def upload(file: UploadFile = File(...)):
     global _store, _curr_file
-    if Path(file.filename).suffix.lower() not in (".pdf", ".txt", ".md"):
+    if Path(file.filename).suffix.lower() not in (".pdf", ".txt", ".md", ".docs"):
         raise HTTPException(400, "wrong file type")
     docs_dir = Path(DOCS_DIR)
     if docs_dir.exists():

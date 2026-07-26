@@ -577,19 +577,15 @@
             body: fd
         });
 
-        if (!res.ok) {
-            let message = "Upload failed";
+             let data = {};
 
             try {
-                const err = await res.json();
-                message = err.detail || message;
-            } catch {
-                message = await res.text() || message;
+                data = await res.json();
+            } catch {}
+
+            if (!res.ok) {
+                throw new Error(data.detail || "Upload failed");
             }
-
-            throw new Error(message);
-        }
-
         cf.textContent = "📚 Indexing document...";
 
         await refreshStatus();

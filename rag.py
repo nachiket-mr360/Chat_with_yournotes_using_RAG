@@ -62,7 +62,7 @@ def build_index(doc: str="docs", batch_size: int=32) -> Chroma: #here indexing, 
         raise ValueError(f"no documents found in {doc}")
     if Path(CHROMA_DIR).exists():
         shutil.rmtree(CHROMA_DIR) #till import the file till here
-    splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=150) #split it
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=200) #split it
     all_chunks = []
     
     for p in paths:
